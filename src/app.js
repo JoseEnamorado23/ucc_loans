@@ -16,7 +16,8 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000', 
   'http://172.25.64.178:3000',
-  process.env.FRONTEND_URL
+  process.env.FRONTEND_URL,
+  'https://uccloans.vercel.app',
 ].filter(Boolean);
 
 app.use(cors({
