@@ -128,8 +128,8 @@ const secureAdminAuth = {
   setSecureCookies(res, accessToken, refreshToken) {
     const cookieOptions = {
       httpOnly: true, // No accesible desde JavaScript
-      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-      sameSite: 'strict', // Protección CSRF
+      secure: true,
+      sameSite: 'none', // Protección CSRF
       path: '/'
     };
 
