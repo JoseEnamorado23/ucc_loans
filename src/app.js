@@ -25,6 +25,7 @@ app.use((req, res, next) => {
     "img-src 'self' data:; " + // ✅ SOLO IMÁGENES LOCALES
     "connect-src 'self' https://uccloans.vercel.app; " +
     "frame-src 'self'; " +
+    "frame-ancestors 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'; " +
     "object-src 'none'"
