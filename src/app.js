@@ -14,23 +14,23 @@ const app = express();
 
 // ========== CONFIGURACIÓN DE SEGURIDAD ==========
 
-// ✅ AGREGAR CABECERA CSP AQUÍ - JUSTO DESPUÉS DE app = express()
+// ✅ CSP SEGURO - SIN WILDCARDS
 app.use((req, res, next) => {
-  // Cabecera Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://vercel.live; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "script-src 'self'; " +
+    "style-src 'self' https://fonts.googleapis.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self' ws: wss: https://uccloans.vercel.app; " +
-    "frame-src 'self' https://vercel.live; " +
+    "img-src 'self' data:; " + // ✅ SOLO IMÁGENES LOCALES
+    "connect-src 'self' https://uccloans.vercel.app; " +
+    "frame-src 'self'; " +
     "base-uri 'self'; " +
-    "form-action 'self'"
+    "form-action 'self'; " +
+    "object-src 'none'"
   );
   
-  // Otras cabeceras de seguridad recomendadas
+  // Otras cabeceras de seguridad
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
