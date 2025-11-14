@@ -12,6 +12,33 @@ const app = express();
 
 // ========== CONFIGURACIÓN DE SEGURIDAD ==========
 
+// ========== CONFIGURACIÓN DE SEGURIDAD ==========
+
+// ✅ AGREGAR CABECERA CSP AQUÍ - JUSTO DESPUÉS DE app = express()
+app.use((req, res, next) => {
+  // Cabecera Content Security Policy
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://vercel.live; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data: https:; " +
+    "connect-src 'self' ws: wss: https://uccloans.vercel.app; " +
+    "frame-src 'self' https://vercel.live; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+  
+  // Otras cabeceras de seguridad recomendadas
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  next();
+});
+
 // Configurar CORS con opciones más seguras
 const allowedOrigins = [
   'http://localhost:3000', 
