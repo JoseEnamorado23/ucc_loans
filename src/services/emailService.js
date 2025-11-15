@@ -1,14 +1,15 @@
-// src/services/emailService.js - VERSIÓN PRODUCCIÓN
+// src/services/emailService.js - VERSIÓN SENDGRID PRODUCCIÓN
 const nodemailer = require("nodemailer");
 
 class EmailService {
   constructor() {
-    // ✅ CONFIGURACIÓN PARA PRODUCCIÓN (Gmail)
+    // ✅ CONFIGURACIÓN PARA PRODUCCIÓN (SendGrid)
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.sendgrid.net',
+      port: 587,
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: 'apikey', // ← PALABRA FIJA
+        pass: process.env.SENDGRID_API_KEY // ← Tu API Key de SendGrid
       },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
