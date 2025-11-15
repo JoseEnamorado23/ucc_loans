@@ -3,19 +3,22 @@ const nodemailer = require("nodemailer");
 
 class EmailService {
   constructor() {
-    // ✅ CONFIGURACIÓN PARA PRODUCCIÓN (SendGrid)
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      auth: {
-        user: 'apikey', // ← PALABRA FIJA
-        pass: process.env.SENDGRID_API_KEY // ← Tu API Key de SendGrid
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000
-    });
-  }
+  console.log('🔧 Configurando EmailService con SendGrid...');
+  console.log('📧 EMAIL_USER:', process.env.EMAIL_USER);
+  console.log('🔑 SENDGRID_API_KEY existe:', !!process.env.SENDGRID_API_KEY);
+  
+  this.transporter = nodemailer.createTransport({
+    host: 'smtp.sendgrid.net',
+    port: 587,
+    auth: {
+      user: 'apikey',
+      pass: process.env.SENDGRID_API_KEY
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
+  });
+}
 
   // 🔐 Enviar email de verificación
   async sendVerificationEmail(userEmail, verificationToken, userName) {
