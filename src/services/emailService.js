@@ -1,43 +1,37 @@
-// src/services/emailService.js - VERSIÓN SENDGRID PRODUCCIÓN
-const nodemailer = require("nodemailer");
+// src/services/emailService.js - VERSIÓN SENDGRID API
+const sgMail = require('@sendgrid/mail');
 
 class EmailService {
   constructor() {
-  console.log('🔧 Configurando EmailService con SendGrid...');
-  console.log('📧 EMAIL_USER:', process.env.EMAIL_USER);
-  console.log('🔑 SENDGRID_API_KEY existe:', !!process.env.SENDGRID_API_KEY);
-  
-  this.transporter = nodemailer.createTransport({
-    host: 'smtp.sendgrid.net',
-    port: 465,
-    secure: true,
-    auth: {
-      user: 'apikey',
-      pass: process.env.SENDGRID_API_KEY
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 10000
-  });
-}
+    console.log('🔧 Configurando EmailService con SendGrid API...');
+    console.log('📧 EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('🔑 SENDGRID_API_KEY existe:', !!process.env.SENDGRID_API_KEY);
+    
+    // Configurar SendGrid con el API Key
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  }
 
   // 🔐 Enviar email de verificación
   async sendVerificationEmail(userEmail, verificationToken, userName) {
     const verificationUrl = `${process.env.FRONTEND_URL}/user/verify-email/${verificationToken}`;
 
-    const mailOptions = {
-      from: `"Sistema de Préstamos" <${process.env.EMAIL_USER}>`,
+    const msg = {
       to: userEmail,
+      from: {
+        email: process.env.EMAIL_USER,
+        name: 'Sistema de Préstamos'
+      },
       subject: "✅ Verifica tu cuenta - Sistema de Préstamos",
       html: this.getVerificationTemplate(userName, verificationUrl),
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      await sgMail.send(msg);
       console.log(`✅ Email de verificación enviado a: ${userEmail}`);
       return true;
     } catch (error) {
       console.error("❌ Error enviando email de verificación:", error);
+      console.error("Detalles del error:", error.response?.body);
       return false;
     }
   }
@@ -47,19 +41,23 @@ class EmailService {
     console.log("📧 Enviando email de invitación a:", userEmail);
     console.log("🔗 Enlace recibido:", setupUrl);
 
-    const mailOptions = {
-      from: `"Sistema de Préstamos - Admin" <${process.env.EMAIL_USER}>`,
+    const msg = {
       to: userEmail,
+      from: {
+        email: process.env.EMAIL_USER,
+        name: 'Sistema de Préstamos - Admin'
+      },
       subject: "🎯 Activación de Cuenta - Sistema de Préstamos",
       html: this.getAdminInvitationTemplate(userName, setupUrl),
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      await sgMail.send(msg);
       console.log(`✅ Email de invitación enviado a: ${userEmail}`);
       return true;
     } catch (error) {
       console.error("❌ Error enviando email de invitación:", error);
+      console.error("Detalles del error:", error.response?.body);
       return false;
     }
   }
@@ -68,23 +66,28 @@ class EmailService {
   async sendPasswordResetEmail(userEmail, resetToken, userName) {
     const resetUrl = `${process.env.FRONTEND_URL}/user/reset-password/${resetToken}`;
 
-    const mailOptions = {
-      from: `"Sistema de Préstamos" <${process.env.EMAIL_USER}>`,
+    const msg = {
       to: userEmail,
+      from: {
+        email: process.env.EMAIL_USER,
+        name: 'Sistema de Préstamos'
+      },
       subject: "🔐 Recupera tu contraseña - Sistema de Préstamos",
       html: this.getPasswordResetTemplate(userName, resetUrl),
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      await sgMail.send(msg);
       console.log(`✅ Email de recuperación enviado a: ${userEmail}`);
       return true;
     } catch (error) {
       console.error("❌ Error enviando email de recuperación:", error);
+      console.error("Detalles del error:", error.response?.body);
       return false;
     }
   }
 
+  // ... MANTENER LAS MISMAS PLANTILLAS HTML QUE YA TIENES
   getAdminInvitationTemplate(userName, setupUrl) {
     return `
     <!DOCTYPE html>
@@ -127,7 +130,7 @@ class EmailService {
   `;
   }
 
-  // 📋 Plantilla de verificación
+  // 📋 Plantilla de verificación (mantener igual)
   getVerificationTemplate(userName, verificationUrl) {
     return `
       <!DOCTYPE html>
@@ -170,7 +173,7 @@ class EmailService {
     `;
   }
 
-  // 📋 Plantilla de recuperación de contraseña
+  // 📋 Plantilla de recuperación de contraseña (mantener igual)
   getPasswordResetTemplate(userName, resetUrl) {
     return `
       <!DOCTYPE html>
