@@ -1,47 +1,35 @@
-// src/services/emailService.js
+// src/services/emailService.js - VERSIÓN PRODUCCIÓN
 const nodemailer = require("nodemailer");
 
 class EmailService {
   constructor() {
-    // Para desarrollo, podemos usar Ethereal Email (testing)
+    // ✅ CONFIGURACIÓN PARA PRODUCCIÓN (Gmail)
     this.transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      auth: {
-        user: process.env.ETHEREAL_USER,
-        pass: process.env.ETHEREAL_PASS,
-      },
-    });
-
-    // En producción, cambiar a Gmail:
-    /*
-    this.transporter = nodemailer.createTransporter({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-      }
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000
     });
-    */
   }
 
   // 🔐 Enviar email de verificación
   async sendVerificationEmail(userEmail, verificationToken, userName) {
-    const verificationUrl = `${
-      process.env.FRONTEND_URL || "http://localhost:5173"
-    }/user/verify-email/${verificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL}/user/verify-email/${verificationToken}`;
 
     const mailOptions = {
-      from: '"Sistema de Préstamos" <noreply@bienestar.edu.co>',
+      from: `"Sistema de Préstamos" <${process.env.EMAIL_USER}>`,
       to: userEmail,
       subject: "✅ Verifica tu cuenta - Sistema de Préstamos",
       html: this.getVerificationTemplate(userName, verificationUrl),
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
+      await this.transporter.sendMail(mailOptions);
       console.log(`✅ Email de verificación enviado a: ${userEmail}`);
-      console.log(`📧 Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
       return true;
     } catch (error) {
       console.error("❌ Error enviando email de verificación:", error);
@@ -49,28 +37,45 @@ class EmailService {
     }
   }
 
-  // ✅ VERSIÓN CORRECTA en emailService.js
+  // ✅ Enviar email de invitación de administrador
   async sendAdminInvitationEmail(userEmail, setupUrl, userName) {
-    // ✅ setupUrl ya viene completa del controller
-    // NO construirla de nuevo aquí
-
     console.log("📧 Enviando email de invitación a:", userEmail);
     console.log("🔗 Enlace recibido:", setupUrl);
 
     const mailOptions = {
-      from: '"Sistema de Préstamos - Admin" <noreply@bienestar.edu.co>',
+      from: `"Sistema de Préstamos - Admin" <${process.env.EMAIL_USER}>`,
       to: userEmail,
       subject: "🎯 Activación de Cuenta - Sistema de Préstamos",
       html: this.getAdminInvitationTemplate(userName, setupUrl),
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
+      await this.transporter.sendMail(mailOptions);
       console.log(`✅ Email de invitación enviado a: ${userEmail}`);
-      console.log(`📧 Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
       return true;
     } catch (error) {
       console.error("❌ Error enviando email de invitación:", error);
+      return false;
+    }
+  }
+
+  // 🔄 Enviar email de recuperación de contraseña
+  async sendPasswordResetEmail(userEmail, resetToken, userName) {
+    const resetUrl = `${process.env.FRONTEND_URL}/user/reset-password/${resetToken}`;
+
+    const mailOptions = {
+      from: `"Sistema de Préstamos" <${process.env.EMAIL_USER}>`,
+      to: userEmail,
+      subject: "🔐 Recupera tu contraseña - Sistema de Préstamos",
+      html: this.getPasswordResetTemplate(userName, resetUrl),
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Email de recuperación enviado a: ${userEmail}`);
+      return true;
+    } catch (error) {
+      console.error("❌ Error enviando email de recuperación:", error);
       return false;
     }
   }
@@ -115,32 +120,6 @@ class EmailService {
     </body>
     </html>
   `;
-  }
-
-  
-
-  // 🔄 Enviar email de recuperación de contraseña
-  async sendPasswordResetEmail(userEmail, resetToken, userName) {
-    const resetUrl = `${
-      process.env.FRONTEND_URL || "http://localhost:5173"
-    }/user/reset-password/${resetToken}`;
-
-    const mailOptions = {
-      from: '"Sistema de Préstamos" <noreply@bienestar.edu.co>',
-      to: userEmail,
-      subject: "🔐 Recupera tu contraseña - Sistema de Préstamos",
-      html: this.getPasswordResetTemplate(userName, resetUrl),
-    };
-
-    try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Email de recuperación enviado a: ${userEmail}`);
-      console.log(`📧 Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-      return true;
-    } catch (error) {
-      console.error("❌ Error enviando email de recuperación:", error);
-      return false;
-    }
   }
 
   // 📋 Plantilla de verificación
