@@ -9,13 +9,14 @@ class EmailService {
   
   this.transporter = nodemailer.createTransport({
     host: 'smtp.sendgrid.net',
-    port: 587,
+    port: 465,
+    secure: true,
     auth: {
       user: 'apikey',
       pass: process.env.SENDGRID_API_KEY
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
     socketTimeout: 10000
   });
 }
