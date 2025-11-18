@@ -109,7 +109,7 @@ const usersController = {
       }
 
       // Obtener estadísticas del usuario
-      const stats = await User.getUserStats(id);
+      const stats = await User.getUserDetailedStats(id)
 
       res.json({
         success: true,
@@ -155,32 +155,45 @@ const usersController = {
   },
 
   // 📊 OBTENER ESTADÍSTICAS DETALLADAS DEL USUARIO
-  async getUserDetailedStats(req, res) {
-    try {
-      const { id } = req.params;
+ // En controllers/users.controller.js - VERSIÓN CORREGIDA
 
-      const stats = await User.getUserDetailedStats(id);
 
-      if (!stats) {
-        return res.status(404).json({
-          success: false,
-          message: 'Usuario no encontrado'
-        });
-      }
+// 📊 OBTENER ESTADÍSTICAS DETALLADAS DEL USUARIO - CORREGIDO
+async getUserDetailedStats(req, res) {
+  try {
+    const { id } = req.params;
 
-      res.json({
-        success: true,
-        data: stats
-      });
+    console.log('🔍 CONTROLLER: getUserDetailedStats llamado');
+    console.log(`👤 UserID recibido: ${id}`);
+    console.log(`📞 Llamando a User.getUserDetailedStats(${id})`);
 
-    } catch (error) {
-      console.error('Error en getUserDetailedStats:', error);
-      res.status(500).json({
+    // ✅ FORMA CORRECTA: Llamar al método estático del modelo
+    const stats = await User.getUserDetailedStats(id);
+
+    console.log('📊 CONTROLLER: Resultado del modelo:', stats);
+
+    if (!stats) {
+      console.log('❌ CONTROLLER: Usuario no encontrado');
+      return res.status(404).json({
         success: false,
-        message: 'Error al obtener las estadísticas del usuario'
+        message: 'Usuario no encontrado'
       });
     }
-  },
+
+    console.log('✅ CONTROLLER: Enviando respuesta exitosa');
+    res.json({
+      success: true,
+      data: stats
+    });
+
+  } catch (error) {
+    console.error('❌ CONTROLLER: Error en getUserDetailedStats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener las estadísticas del usuario: ' + error.message
+    });
+  }
+},
 
   // ✏️ ACTUALIZAR INFORMACIÓN DEL USUARIO
   async updateUser(req, res) {
@@ -297,32 +310,6 @@ const usersController = {
     }
   },
 
-  async getUserDetailedStats(req, res) {
-  try {
-    const { id } = req.params;
-
-    const stats = await User.getUserStats(id);
-
-    if (!stats) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: stats
-    });
-
-  } catch (error) {
-    console.error('Error en getUserDetailedStats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener las estadísticas del usuario'
-    });
-  }
-},
 
   // ➕ CREAR USUARIO
   async createUser(req, res) {

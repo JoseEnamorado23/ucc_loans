@@ -52,6 +52,78 @@ class User {
   }
 }
 
+// 📊 OBTENER ESTADÍSTICAS DETALLADAS DEL USUARIO - MÉTODO FALTANTE
+// En models/users.model.js - MÉTODO CON DEBUG EXTENDIDO
+static async getUserDetailedStats(userId) {
+  try {
+    console.log('🔍 MODELO: getUserDetailedStats llamado para userId:', userId);
+    
+    // Primero, verifiquemos qué préstamos tiene este usuario
+    const todosPrestamos = await db.query(
+      `SELECT id, estado, implemento FROM prestamos WHERE usuario_id = $1`,
+      [userId]
+    );
+    
+    console.log('📋 TODOS los préstamos del usuario:', todosPrestamos.rows);
+    console.log('🎯 Estados encontrados:', [...new Set(todosPrestamos.rows.map(p => p.estado))]);
+    
+    const rechazados = todosPrestamos.rows.filter(p => p.estado === 'rechazado');
+    console.log('❌ Préstamos rechazados encontrados:', rechazados);
+
+    // Ahora ejecutemos la consulta principal
+    const result = await db.query(
+      `
+      SELECT 
+        u.*,
+        p.nombre as programa_nombre,
+        COUNT(pm.id) as total_prestamos,
+        COUNT(CASE WHEN pm.estado = 'activo' THEN 1 END) as prestamos_activos,
+        COUNT(CASE WHEN pm.estado = 'devuelto' THEN 1 END) as prestamos_devueltos,
+        COUNT(CASE WHEN pm.estado = 'pendiente' THEN 1 END) as prestamos_pendientes,
+        COUNT(CASE WHEN pm.estado = 'perdido' THEN 1 END) as prestamos_perdidos,
+        
+        -- ✅ AGREGAR ESTOS NUEVOS ESTADOS
+        COUNT(CASE WHEN pm.estado = 'solicitado' THEN 1 END) as prestamos_solicitados,
+        COUNT(CASE WHEN pm.estado = 'rechazado' THEN 1 END) as prestamos_rechazados,
+        
+        COALESCE(SUM(CASE WHEN pm.estado = 'devuelto' THEN pm.horas_totales ELSE 0 END), 0) as horas_totales_reales,
+        COALESCE(SUM(pm.horas_totales), 0) as horas_totales_acumuladas,
+        
+        -- Métricas adicionales
+        COUNT(DISTINCT pm.implemento) as implementos_diferentes,
+        EXTRACT(DAYS FROM NOW() - MIN(pm.fecha_registro)) as dias_activo
+        
+      FROM usuarios u
+      LEFT JOIN programas p ON u.programa_id = p.id
+      LEFT JOIN prestamos pm ON u.id = pm.usuario_id
+      WHERE u.id = $1
+      GROUP BY u.id, p.nombre, p.id
+      `,
+      [userId]
+    );
+
+    console.log('📊 RESULTADO de la consulta principal:');
+    if (result.rows[0]) {
+      console.log({
+        total: result.rows[0].total_prestamos,
+        activos: result.rows[0].prestamos_activos,
+        devueltos: result.rows[0].prestamos_devueltos,
+        solicitados: result.rows[0].prestamos_solicitados,
+        rechazados: result.rows[0].prestamos_rechazados,
+        pendientes: result.rows[0].prestamos_pendientes,
+        perdidos: result.rows[0].prestamos_perdidos
+      });
+    } else {
+      console.log('❌ No se encontraron resultados para el usuario');
+    }
+
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('❌ Error en getUserDetailedStats:', error);
+    throw error;
+  }
+}
+
   // 🔐 MÉTODOS NUEVOS PARA AUTENTICACIÓN
   static async findByEmail(email) {
     try {
@@ -489,6 +561,7 @@ class User {
   }
   // 📋 OBTENER HISTORIAL DE PRÉSTAMOS DEL USUARIO CON PAGINACIÓN
   // 📋 OBTENER HISTORIAL DE PRÉSTAMOS DEL USUARIO CON PAGINACIÓN - CORREGIDO
+  
   static async getUserLoansHistory(userId, filters = {}) {
     try {
       const { page = 1, limit = 10, estado = "", implemento = "" } = filters;
