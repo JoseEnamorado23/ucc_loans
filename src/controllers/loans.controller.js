@@ -508,6 +508,7 @@ async rejectLoanRequest(req, res) {
   // CORREGIR estos métodos en loans.controller.js
 
 // CORREGIR el método createLoanRequest en loans.controller.js
+// MÉTODO createLoanRequest CORREGIDO - VERSIÓN FUNCIONAL
 async createLoanRequest(req, res) {
   try {
     console.log("📝 Creando solicitud de préstamo...");
@@ -519,8 +520,7 @@ async createLoanRequest(req, res) {
     console.log("🎯 HORA RECIBIDA DEL FRONTEND:");
     console.log(" - fecha_solicitud:", fecha_solicitud);
     console.log(" - timestamp_bogota:", timestamp_bogota);
-    console.log(" - debug_time:", debug_time);
-    console.log(" - Hora servidor (UTC):", new Date().toISOString());
+    console.log(" - debug_time:", debug_time?.hora_bogota_legible);
     console.log(" - Hora servidor (Local):", new Date().toString());
 
     // Validaciones básicas
@@ -576,28 +576,42 @@ async createLoanRequest(req, res) {
       });
     }
 
-    // ✅ CORRECCIÓN: Usar la fecha enviada por el frontend o la fecha actual del servidor
-    let fechaParaGuardar;
-    if (fecha_solicitud) {
-      // Usar la fecha enviada por el frontend (ya en hora Bogotá)
-      fechaParaGuardar = new Date(fecha_solicitud).toISOString().split('T')[0];
-      console.log("✅ Usando fecha del frontend (Bogotá):", fechaParaGuardar);
-    } else {
-      // Fallback: fecha actual (puede ser UTC)
-      fechaParaGuardar = new Date().toISOString().split('T')[0];
-      console.log("⚠️ Usando fecha del servidor (UTC):", fechaParaGuardar);
-    }
+    // ✅ CORRECCIÓN DEFINITIVA: Usar fecha actual del servidor pero formateada correctamente
+    const ahora = new Date();
+    
+    // Convertir a hora Bogotá manualmente en el backend
+    const offsetBogota = -5 * 60 * 60 * 1000; // UTC-5 en milisegundos
+    const utc = ahora.getTime() + (ahora.getTimezoneOffset() * 60000);
+    const horaBogota = new Date(utc + offsetBogota);
+    
+    console.log("🕒 CÁLCULO BACKEND:");
+    console.log(" - Hora servidor:", ahora.toString());
+    console.log(" - Hora Bogotá calculada:", horaBogota.toString());
+    console.log(" - Hora (HH:MM):", horaBogota.getHours() + ':' + horaBogota.getMinutes());
 
-    // 4. Crear préstamo con estado 'solicitado' - USANDO FECHA CORREGIDA
+    // Usar fecha en formato YYYY-MM-DD para fecha_prestamo
+    const fechaPrestamo = horaBogota.toISOString().split('T')[0];
+    const timestampRegistro = horaBogota.toISOString();
+
+    console.log("💾 GUARDANDO EN BD:");
+    console.log(" - fecha_prestamo:", fechaPrestamo);
+    console.log(" - fecha_registro:", timestampRegistro);
+
+    // 4. Crear préstamo con estado 'solicitado'
     const loanRequest = await db.query(
       `INSERT INTO prestamos (usuario_id, implemento, fecha_prestamo, estado, fecha_registro) 
-       VALUES ($1, $2, $3, 'solicitado', CURRENT_TIMESTAMP) 
+       VALUES ($1, $2, $3, 'solicitado', $4) 
        RETURNING *`,
-      [usuario_id, implemento, fechaParaGuardar]
+      [usuario_id, implemento, fechaPrestamo, timestampRegistro]
     );
 
     const solicitudCreada = loanRequest.rows[0];
-    console.log("✅ Solicitud creada en BD:", solicitudCreada);
+    console.log("✅ Solicitud creada en BD:", {
+      id: solicitudCreada.id,
+      fecha_prestamo: solicitudCreada.fecha_prestamo,
+      fecha_registro: solicitudCreada.fecha_registro,
+      estado: solicitudCreada.estado
+    });
 
     // ✅ WEBSOCKET: Notificar nueva solicitud
     const io = getIO();
