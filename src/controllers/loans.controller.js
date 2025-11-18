@@ -511,8 +511,17 @@ async rejectLoanRequest(req, res) {
 async createLoanRequest(req, res) {
   try {
     console.log("📝 Creando solicitud de préstamo...");
+    console.log("🕒 Datos recibidos del frontend:", req.body);
     
-    const { usuario_id, implemento } = req.body;
+    const { usuario_id, implemento, fecha_solicitud, timestamp_bogota, debug_time } = req.body;
+
+    // ✅ DEBUG: Ver qué hora envía el frontend
+    console.log("🎯 HORA RECIBIDA DEL FRONTEND:");
+    console.log(" - fecha_solicitud:", fecha_solicitud);
+    console.log(" - timestamp_bogota:", timestamp_bogota);
+    console.log(" - debug_time:", debug_time);
+    console.log(" - Hora servidor (UTC):", new Date().toISOString());
+    console.log(" - Hora servidor (Local):", new Date().toString());
 
     // Validaciones básicas
     if (!usuario_id || !implemento) {
@@ -567,16 +576,28 @@ async createLoanRequest(req, res) {
       });
     }
 
-    // 4. Crear préstamo con estado 'solicitado' - SIN horas automáticas
+    // ✅ CORRECCIÓN: Usar la fecha enviada por el frontend o la fecha actual del servidor
+    let fechaParaGuardar;
+    if (fecha_solicitud) {
+      // Usar la fecha enviada por el frontend (ya en hora Bogotá)
+      fechaParaGuardar = new Date(fecha_solicitud).toISOString().split('T')[0];
+      console.log("✅ Usando fecha del frontend (Bogotá):", fechaParaGuardar);
+    } else {
+      // Fallback: fecha actual (puede ser UTC)
+      fechaParaGuardar = new Date().toISOString().split('T')[0];
+      console.log("⚠️ Usando fecha del servidor (UTC):", fechaParaGuardar);
+    }
+
+    // 4. Crear préstamo con estado 'solicitado' - USANDO FECHA CORREGIDA
     const loanRequest = await db.query(
-      `INSERT INTO prestamos (usuario_id, implemento, fecha_prestamo, estado) 
-       VALUES ($1, $2, CURRENT_DATE, 'solicitado') 
+      `INSERT INTO prestamos (usuario_id, implemento, fecha_prestamo, estado, fecha_registro) 
+       VALUES ($1, $2, $3, 'solicitado', CURRENT_TIMESTAMP) 
        RETURNING *`,
-      [usuario_id, implemento]
+      [usuario_id, implemento, fechaParaGuardar]
     );
 
     const solicitudCreada = loanRequest.rows[0];
-    console.log("✅ Solicitud creada:", solicitudCreada);
+    console.log("✅ Solicitud creada en BD:", solicitudCreada);
 
     // ✅ WEBSOCKET: Notificar nueva solicitud
     const io = getIO();
