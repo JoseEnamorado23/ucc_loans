@@ -509,19 +509,17 @@ async rejectLoanRequest(req, res) {
 
 // CORREGIR el método createLoanRequest en loans.controller.js
 // MÉTODO createLoanRequest CORREGIDO - VERSIÓN FUNCIONAL
+// MÉTODO createLoanRequest COMPLETO - VERSIÓN SIMPLE
 async createLoanRequest(req, res) {
   try {
     console.log("📝 Creando solicitud de préstamo...");
-    console.log("🕒 Datos recibidos del frontend:", req.body);
     
-    const { usuario_id, implemento, fecha_solicitud, timestamp_bogota, debug_time } = req.body;
+    const { usuario_id, implemento, debug_time } = req.body;
 
-    // ✅ DEBUG: Ver qué hora envía el frontend
-    console.log("🎯 HORA RECIBIDA DEL FRONTEND:");
-    console.log(" - fecha_solicitud:", fecha_solicitud);
-    console.log(" - timestamp_bogota:", timestamp_bogota);
+    // ✅ DEBUG: Ver qué hora debería ser
+    console.log("🎯 HORA CORRECTA DEBERÍA SER:");
     console.log(" - debug_time:", debug_time?.hora_bogota_legible);
-    console.log(" - Hora servidor (Local):", new Date().toString());
+    console.log(" - Hora (HH:MM):", debug_time?.horas + ':' + debug_time?.minutos);
 
     // Validaciones básicas
     if (!usuario_id || !implemento) {
@@ -576,41 +574,22 @@ async createLoanRequest(req, res) {
       });
     }
 
-    // ✅ CORRECCIÓN DEFINITIVA: Usar fecha actual del servidor pero formateada correctamente
-    const ahora = new Date();
-    
-    // Convertir a hora Bogotá manualmente en el backend
-    const offsetBogota = -5 * 60 * 60 * 1000; // UTC-5 en milisegundos
-    const utc = ahora.getTime() + (ahora.getTimezoneOffset() * 60000);
-    const horaBogota = new Date(utc + offsetBogota);
-    
-    console.log("🕒 CÁLCULO BACKEND:");
-    console.log(" - Hora servidor:", ahora.toString());
-    console.log(" - Hora Bogotá calculada:", horaBogota.toString());
-    console.log(" - Hora (HH:MM):", horaBogota.getHours() + ':' + horaBogota.getMinutes());
-
-    // Usar fecha en formato YYYY-MM-DD para fecha_prestamo
-    const fechaPrestamo = horaBogota.toISOString().split('T')[0];
-    const timestampRegistro = horaBogota.toISOString();
-
-    console.log("💾 GUARDANDO EN BD:");
-    console.log(" - fecha_prestamo:", fechaPrestamo);
-    console.log(" - fecha_registro:", timestampRegistro);
+    // ✅ SOLUCIÓN DEFINITIVA: PostgreSQL con timezone configurado
+    console.log("💾 Guardando con CURRENT_DATE...");
 
     // 4. Crear préstamo con estado 'solicitado'
     const loanRequest = await db.query(
       `INSERT INTO prestamos (usuario_id, implemento, fecha_prestamo, estado, fecha_registro) 
-       VALUES ($1, $2, $3, 'solicitado', $4) 
+       VALUES ($1, $2, CURRENT_DATE, 'solicitado', CURRENT_TIMESTAMP) 
        RETURNING *`,
-      [usuario_id, implemento, fechaPrestamo, timestampRegistro]
+      [usuario_id, implemento]
     );
 
     const solicitudCreada = loanRequest.rows[0];
     console.log("✅ Solicitud creada en BD:", {
       id: solicitudCreada.id,
       fecha_prestamo: solicitudCreada.fecha_prestamo,
-      fecha_registro: solicitudCreada.fecha_registro,
-      estado: solicitudCreada.estado
+      fecha_registro: solicitudCreada.fecha_registro
     });
 
     // ✅ WEBSOCKET: Notificar nueva solicitud
@@ -653,7 +632,11 @@ async getPendingRequests(req, res) {
         u.programa_id, 
         prog.nombre as programa,
         imp.nombre as nombre_implemento,
-        imp.cantidad_disponible
+        imp.cantidad_disponible,
+        -- ✅ CONVERTIR a hora Colombia explícitamente
+        (p.fecha_registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota') as fecha_registro_bogota,
+        TO_CHAR(p.fecha_registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota', 'HH24:MI:SS') as hora_bogota,
+        TO_CHAR(p.fecha_registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') as fecha_bogota
        FROM prestamos p
        INNER JOIN usuarios u ON p.usuario_id = u.id
        LEFT JOIN programas prog ON u.programa_id = prog.id
@@ -664,21 +647,36 @@ async getPendingRequests(req, res) {
 
     console.log(`✅ ${solicitudes.rows.length} solicitudes encontradas`);
     
-    // ✅ DEBUG: Ver las fechas reales
+    // ✅ DEBUG DETALLADO
     solicitudes.rows.forEach((solicitud, index) => {
-      const fechaRegistro = new Date(solicitud.fecha_registro);
-      console.log(`Solicitud ${index + 1}:`);
-      console.log(' - ID:', solicitud.id);
-      console.log(' - fecha_prestamo (BD):', solicitud.fecha_prestamo);
-      console.log(' - fecha_registro (BD):', solicitud.fecha_registro);
-      console.log(' - fecha_registro (Local):', fechaRegistro.toString());
-      console.log(' - Hora (HH:MM):', fechaRegistro.getHours() + ':' + fechaRegistro.getMinutes());
+      console.log(`=== Solicitud ${index + 1} ===`);
+      console.log('ID:', solicitud.id);
+      console.log('Implemento:', solicitud.implemento);
+      console.log('Usuario:', solicitud.nombre_completo);
+      console.log('--- FECHAS EN BD ---');
+      console.log('fecha_prestamo (BD):', solicitud.fecha_prestamo);
+      console.log('fecha_registro (BD):', solicitud.fecha_registro);
+      console.log('--- CONVERSIÓN A BOGOTÁ ---');
+      console.log('fecha_registro_bogota:', solicitud.fecha_registro_bogota);
+      console.log('fecha_bogota:', solicitud.fecha_bogota);
+      console.log('hora_bogota:', solicitud.hora_bogota);
+      console.log('--- FRONTEND ---');
+      console.log('Hora para mostrar:', solicitud.hora_bogota);
+      console.log('========================');
     });
+
+    // Preparar datos para el frontend
+    const solicitudesFormateadas = solicitudes.rows.map(solicitud => ({
+      ...solicitud,
+      // ✅ Campos adicionales para el frontend
+      hora_mostrar: solicitud.hora_bogota,
+      fecha_mostrar: solicitud.fecha_bogota
+    }));
 
     res.json({
       success: true,
-      data: solicitudes.rows,
-      count: solicitudes.rows.length
+      data: solicitudesFormateadas,
+      count: solicitudesFormateadas.length
     });
 
   } catch (error) {
@@ -689,7 +687,6 @@ async getPendingRequests(req, res) {
     });
   }
 },
-
 // CORREGIR el método approveLoanRequest
 async approveLoanRequest(req, res) {
   try {
