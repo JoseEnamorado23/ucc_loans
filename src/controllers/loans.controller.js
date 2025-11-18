@@ -639,6 +639,7 @@ async createLoanRequest(req, res) {
 },
 
 // ✅ MÉTODO 2 CORREGIDO: Obtener solicitudes pendientes
+// MÉTODO getPendingRequests CORREGIDO
 async getPendingRequests(req, res) {
   try {
     console.log("📋 Obteniendo solicitudes pendientes...");
@@ -656,12 +657,23 @@ async getPendingRequests(req, res) {
        FROM prestamos p
        INNER JOIN usuarios u ON p.usuario_id = u.id
        LEFT JOIN programas prog ON u.programa_id = prog.id
-       LEFT JOIN implementos imp ON p.implemento = imp.nombre  -- JOIN por nombre en lugar de ID
+       LEFT JOIN implementos imp ON p.implemento = imp.nombre
        WHERE p.estado = 'solicitado'
        ORDER BY p.fecha_registro DESC`
     );
 
     console.log(`✅ ${solicitudes.rows.length} solicitudes encontradas`);
+    
+    // ✅ DEBUG: Ver las fechas reales
+    solicitudes.rows.forEach((solicitud, index) => {
+      const fechaRegistro = new Date(solicitud.fecha_registro);
+      console.log(`Solicitud ${index + 1}:`);
+      console.log(' - ID:', solicitud.id);
+      console.log(' - fecha_prestamo (BD):', solicitud.fecha_prestamo);
+      console.log(' - fecha_registro (BD):', solicitud.fecha_registro);
+      console.log(' - fecha_registro (Local):', fechaRegistro.toString());
+      console.log(' - Hora (HH:MM):', fechaRegistro.getHours() + ':' + fechaRegistro.getMinutes());
+    });
 
     res.json({
       success: true,
